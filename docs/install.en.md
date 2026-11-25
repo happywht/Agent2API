@@ -221,7 +221,7 @@ Both in-memory image caches can be shrunk with environment variables (128 MiB ea
 
 glibc allocator tuning such as `MALLOC_ARENA_MAX=2` only matters for builds **without** jemalloc (older images, a self-compiled server, desktop); this image no longer needs it.
 
-**Web panel capability notes** (these stem from having no local desktop client): web login (WorkBuddy / Qoder / Cline), SMS codes and pasted credentials work fully; web logins that need a callback on this machine (AutoClaw / CatPaw / Accio / CodeArts / Trae) and "import desktop login state" are unavailable — use pasted credentials instead. A desktop app with "expose the web management panel" turned on shows the same differences in a browser: one interface, one set of rules.
+**Web panel capability notes** (these stem from having no local desktop client): web login (WorkBuddy / Qoder / Cline), SMS codes and pasted credentials work fully; web logins that need a callback on this machine (AutoClaw / CatPaw / Accio / CodeArts / Trae) and "import desktop login state" are unavailable — use pasted credentials instead. A desktop app with "expose the web management panel" turned on shows the same differences in a browser: one interface, one set of rules. On Windows Docker Desktop, the CodeArts bridge below enables CodeArts web login.
 
 ### In-container updates (optional)
 
@@ -230,6 +230,16 @@ The panel's Software update page can download and apply updates inside the conta
 The same `agent2api-server-linux-<arch>.tar.gz` is also the installer package for the [Linux server](#linux-systemd): its `agent2api-server` and `ui/` entries are exactly what the update chain reads by name, and it additionally ships `install.sh` / `agent2api.service` / `agent2api.env.example`. The update chain only reads the first two (the rest are discarded — see `selfupdate::extract_bundle`), so one artifact serves both purposes: unpack and replace inside a container, unpack and run `install.sh` on a bare-metal host.
 
 Be aware of the trade-off: after an in-container update the image tag and the version actually running **drift apart** (`docker inspect` still reports the old tag), and `docker compose pull && up -d` rebuilds the container back to the version baked into the image. If you want pinned versions, leave this entry point off.
+
+### CodeArts callbacks on Windows Docker Desktop
+
+Install Node.js 22 or later. Bind the container panel locally as `127.0.0.1:18082:3066` for a separate panel, or `127.0.0.1:18082:3065` when the panel shares the gateway port. Use an existing management-capable API key configured in Agent2API, or set `AGENT2API_PROXY_API_KEY` in the container environment. Set `AGENT2API_PROXY_API_KEY` to the matching value in the deployment directory's `.env`. Existing `A2_MANAGEMENT_KEY` is also accepted. From this source checkout, run:
+
+```powershell
+powershell -File .\scripts\windows-codearts-callback.ps1 -Install -DeploymentDirectory 'C:\path\to\deployment'
+```
+
+Open `http://127.0.0.1:18080` on the same Windows computer. The script registers a scheduled task that starts at the current user's logon and recovers automatically. Logs are in `%LOCALAPPDATA%\Agent2API\windows-codearts-web`. CodeArts uses a dynamic callback port for each login, with no Docker port mapping required. This bridge supports a local browser and CodeArts.
 
 ## Verification and client setup
 

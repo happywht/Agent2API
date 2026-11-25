@@ -235,7 +235,7 @@ compose 用户在服务里加一行 `mem_limit: 1g`（`docker-compose.yml` 里�
 
 `MALLOC_ARENA_MAX=2` 这类 glibc 分配器调优，只对**没有内置 jemalloc 的形态**有意义（旧版镜像、自行编译的服务端、桌面端）；本镜像已不需要设它。
 
-**网页面板的功能差异**（源于「没有本机桌面客户端」）：网页登录（WorkBuddy / Qoder / Cline）、手机验证码、粘贴凭证完全可用；需要本机回调的网页登录（AutoClaw / CatPaw / Accio / CodeArts / Trae）与「导入本机登录态」不可用，请改用粘贴凭证。桌面端开着「同时开放网页管理面板」时，用浏览器访问该面板也是这一套差异 —— 同一份界面、同一套判定。
+**网页面板的功能差异**（源于「没有本机桌面客户端」）：网页登录（WorkBuddy / Qoder / Cline）、手机验证码、粘贴凭证完全可用；需要本机回调的网页登录（AutoClaw / CatPaw / Accio / CodeArts / Trae）与「导入本机登录态」不可用，请改用粘贴凭证。桌面端开着「同时开放网页管理面板」时，用浏览器访问该面板也是这一套差异 —— 同一份界面、同一套判定。Windows Docker Desktop 可通过下方 CodeArts 回调桥接使用 CodeArts 网页登录。
 
 ### 容器内更新（可选）
 
@@ -244,6 +244,16 @@ compose 用户在服务里加一行 `mem_limit: 1g`（`docker-compose.yml` 里�
 同一个 `agent2api-server-linux-<arch>.tar.gz` 也是 [Linux 服务端](#linuxsystemd) 的安装包：包内的 `agent2api-server` 与 `ui/` 是这条更新链按名取的条目，另外还带着 `install.sh` / `agent2api.service` / `agent2api.env.example`。容器更新链只认前两个条目（其余读完即丢，见 `selfupdate::extract_bundle`），所以一份产物同时服务两种用途 —— 容器里解包替换，裸机上解包跑 `install.sh`。
 
 代价要清楚：更新后容器标签与**实际运行的版本会漂移**（`docker inspect` 显示的仍是旧 tag），执行 `docker compose pull && up -d` 重建容器会回到镜像里的版本。想固定版本就别开这个入口。
+
+### Windows Docker Desktop 的 CodeArts 回调
+
+安装 Node.js 22 或更新版本。将容器面板绑定到本机 `127.0.0.1:18082:3066`（独立面板）或 `127.0.0.1:18082:3065`（面板与网关共用端口）。使用已在 Agent2API 中配置且可访问管理接口的 API Key，或为容器设置 `AGENT2API_PROXY_API_KEY`。在部署目录的 `.env` 中将 `AGENT2API_PROXY_API_KEY` 设置为相同的值，也可使用已有的 `A2_MANAGEMENT_KEY`。在本源码目录运行：
+
+```powershell
+powershell -File .\scripts\windows-codearts-callback.ps1 -Install -DeploymentDirectory 'C:\path\to\deployment'
+```
+
+在同一台 Windows 电脑打开 `http://127.0.0.1:18080`。脚本注册当前用户登录时启动且自动恢复的任务，日志位于 `%LOCALAPPDATA%\Agent2API\windows-codearts-web`。CodeArts 每次使用动态回调端口，无需在 Docker 中发布该端口。此桥接适用于本机浏览器和 CodeArts。
 
 ## 验证与客户端接入
 
