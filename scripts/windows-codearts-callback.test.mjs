@@ -75,11 +75,11 @@ function login(port, state) {
   return { manualCallback: true, state, url: url.href, timeoutMs: 10000 };
 }
 
-async function startLogin(panelPort) {
+async function startLogin(panelPort, provider = 'codearts') {
   return fetch(`http://${host}:${panelPort}${loginPath}/start`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ provider: 'codearts', methodIndex: 1 }),
+    body: JSON.stringify({ provider, methodIndex: 1 }),
   });
 }
 
@@ -146,4 +146,28 @@ test('other provider login links pass through without opening a callback listene
   await stopServer(probe);
   assert.equal(context.callbacks.length, 0);
   assert.equal(context.cancellations.length, 0);
+});
+
+test('ChatGPT subscription redirects /auth/callback to its own login flow', async (t) => {
+  const port = await unusedPort();
+  const authorization = new URL('https://auth.openai.com/api/accounts/authorize');
+  authorization.searchParams.set('redirect_uri', `http://${host}:${port}/auth/callback`);
+  const context = await fixture(t, [{
+    manualCallback: true,
+    state: 'chatgpt-flow',
+    url: authorization.href,
+    timeoutMs: 10000,
+  }]);
+
+  const start = await startLogin(context.panelPort, 'chatgpt-subscription');
+  assert.equal(start.status, 200);
+  const wrongPath = await fetch(`http://${host}:${port}/oauth/callback?code=wrong&state=wrong`);
+  assert.equal(wrongPath.status, 404);
+  assert.deepEqual(context.callbacks, []);
+
+  const callbackUrl = `http://${host}:${port}/auth/callback?code=chatgpt-code&state=chatgpt-state`;
+  const callback = await fetch(callbackUrl);
+  assert.equal(callback.status, 200);
+  assert.deepEqual(context.callbacks, [{ state: 'chatgpt-flow', callbackUrl }]);
+  await assert.rejects(fetch(callbackUrl));
 });

@@ -6,6 +6,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $taskName = 'Agent2API Windows CodeArts Web'
+$proxy = Join-Path $PSScriptRoot 'windows-codearts-callback.mjs'
 $deployment = (Resolve-Path -LiteralPath $DeploymentDirectory).Path
 if (-not (Test-Path -LiteralPath (Join-Path $deployment '.env') -PathType Leaf)) {
     throw "The Docker deployment directory must contain .env."
@@ -33,6 +34,17 @@ if ($Install) {
     if ((Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue).State -eq 'Running') {
         Stop-ScheduledTask -TaskName $taskName
     }
+    # A detached Node process can outlive the task's PowerShell launcher.
+    $listener = Get-NetTCPConnection -State Listen -LocalAddress 127.0.0.1 -LocalPort 18080 `
+        -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($listener) {
+        $owner = Get-CimInstance Win32_Process -Filter "ProcessId=$($listener.OwningProcess)"
+        $quotedProxy = '"{0}"' -f $proxy
+        if ($owner.Name -ne 'node.exe' -or -not $owner.CommandLine -or -not $owner.CommandLine.Contains($quotedProxy)) {
+            throw 'Port 18080 is already in use. Free that port before installing the bridge.'
+        }
+        Stop-Process -Id $listener.OwningProcess
+    }
     Register-ScheduledTask -TaskName $taskName -Action $action -Trigger @($logon, $recovery) `
         -Principal $principal -Settings $settings -Force | Out-Null
     Start-ScheduledTask -TaskName $taskName
@@ -40,7 +52,6 @@ if ($Install) {
     return
 }
 
-$proxy = Join-Path $PSScriptRoot 'windows-codearts-callback.mjs'
 $logDirectory = Join-Path $env:LOCALAPPDATA 'Agent2API/windows-codearts-web'
 New-Item -ItemType Directory -Path $logDirectory -Force | Out-Null
 $process = Start-Process -FilePath $NodePath -ArgumentList ('"{0}"' -f $proxy) `

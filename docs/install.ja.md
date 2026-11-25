@@ -221,7 +221,7 @@ compose の場合はサービスに `mem_limit: 1g` を 1 行追加します（`
 
 `MALLOC_ARENA_MAX=2` のような glibc アロケーターの調整は、**jemalloc を組み込んでいない形態**（旧イメージ、自前ビルドのサーバー、デスクトップ）にのみ意味があります。本イメージでは設定不要です。
 
-**Web パネルでの機能差**（「本機デスクトップクライアントが無い」ことに起因）: Web ログイン（WorkBuddy / Qoder / Cline）、SMS 認証コード、認証情報の貼り付けは完全に利用できます。本機へのコールバックが必要な Web ログイン（AutoClaw / CatPaw / Accio / CodeArts / Trae）と「本機ログイン状態の取り込み」は利用できないため、認証情報の貼り付けをお使いください。デスクトップ版で「Web 管理パネルも公開する」を有効にしてブラウザーから開いた場合も同じ差になります —— 同一の画面、同一の判定です。 Windows Docker Desktop では、下記の CodeArts コールバック中継で CodeArts の Web ログインを使用できます。
+**Web パネルでの機能差**（「本機デスクトップクライアントが無い」ことに起因）: Web ログイン（WorkBuddy / Qoder / Cline）、SMS 認証コード、認証情報の貼り付けは完全に利用できます。本機へのコールバックが必要な Web ログイン（AutoClaw / CatPaw / Accio / CodeArts / Trae）と「本機ログイン状態の取り込み」は利用できないため、認証情報の貼り付けをお使いください。デスクトップ版で「Web 管理パネルも公開する」を有効にしてブラウザーから開いた場合も同じ差になります —— 同一の画面、同一の判定です。 Windows Docker Desktop では、下記の CodeArts と ChatGPT サブスクリプションのコールバック中継でそれぞれの Web ログインを使用できます。
 
 ### コンテナ内アップデート（任意）
 
@@ -231,7 +231,7 @@ compose の場合はサービスに `mem_limit: 1g` を 1 行追加します（`
 
 トレードオフに注意してください: コンテナ内更新の後は、イメージタグと**実際に動作しているバージョンがずれます**（`docker inspect` は古いタグを表示したままです）。`docker compose pull && up -d` でコンテナを再作成すると、イメージに焼き込まれたバージョンに戻ります。バージョンを固定したい場合はこの入口を有効にしないでください。
 
-### Windows Docker Desktop の CodeArts コールバック
+### Windows Docker Desktop の CodeArts と ChatGPT サブスクリプションのコールバック
 
 Node.js 22 以降をインストールします。コンテナーのパネルをローカルの `127.0.0.1:18082:3066`（独立したパネル）、または `127.0.0.1:18082:3065`（ゲートウェイとポートを共有）にバインドします。Agent2API に設定済みの管理 API にアクセスできる API Key を使用するか、コンテナーの環境変数 `AGENT2API_PROXY_API_KEY` を設定します。デプロイディレクトリの `.env` に同じ値を `AGENT2API_PROXY_API_KEY` として設定します。既存の `A2_MANAGEMENT_KEY` も使用できます。このソースのチェックアウトで実行します。
 
@@ -239,7 +239,7 @@ Node.js 22 以降をインストールします。コンテナーのパネルを
 powershell -File .\scripts\windows-codearts-callback.ps1 -Install -DeploymentDirectory 'C:\path\to\deployment'
 ```
 
-同じ Windows マシンで `http://127.0.0.1:18080` を開きます。スクリプトは現在のユーザーのログオン時起動と自動復旧のタスクを登録し、ログを `%LOCALAPPDATA%\Agent2API\windows-codearts-web` に保存します。CodeArts はログインごとに動的コールバックポートを使用し、Docker での公開は不要です。この中継はローカルブラウザーと CodeArts に対応します。
+同じ Windows マシンで `http://127.0.0.1:18080` を開きます。スクリプトは現在のユーザーのログオン時起動と自動復旧のタスクを登録し、ログを `%LOCALAPPDATA%\Agent2API\windows-codearts-web` に保存します。CodeArts はログインごとに動的コールバックポートを使用します。ChatGPT サブスクリプションは `/auth/callback` とポート `1455` を優先し、コンテナー内で使用中の場合は動的ポートを使用します。中継が待ち受けるのは実行中のログインのコールバックポートのみで、Docker で公開する必要はありません。Windows ホストですでに使用中のポートでは既存のリスナーを維持し、パネルにポート競合を表示します。この中継はローカルブラウザー、CodeArts、ChatGPT サブスクリプションに対応します。
 
 ## 動作確認とクライアント接続
 

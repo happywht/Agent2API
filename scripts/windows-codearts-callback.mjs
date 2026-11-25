@@ -4,7 +4,18 @@ import { pathToFileURL } from 'node:url';
 
 const HOST = '127.0.0.1';
 const LOGIN = '/api/session/login';
-const CALLBACK = '/oauth/callback';
+const PROVIDERS = {
+  'https://codearts.huaweicloud.com/portal/authorize': {
+    redirectParameter: 'auth_callback_url',
+    callbackPath: '/oauth/callback',
+    verifyPortParameter: true,
+  },
+  'https://auth.openai.com/api/accounts/authorize': {
+    redirectParameter: 'redirect_uri',
+    callbackPath: '/auth/callback',
+    verifyPortParameter: false,
+  },
+};
 
 function send(response, status, value) {
   const json = typeof value !== 'string';
@@ -18,33 +29,37 @@ function send(response, status, value) {
   response.end(body);
 }
 
-function codeArtsCallbackPort(login) {
+function callbackTarget(login) {
   const authorization = login?.url || login?.authUrl;
   if (!login?.manualCallback || !authorization || !login.state) return;
   const portal = new URL(authorization);
-  if (portal.origin !== 'https://codearts.huaweicloud.com' || portal.pathname !== '/portal/authorize') return;
-  const port = Number(portal.searchParams.get('port'));
+  const provider = PROVIDERS[portal.origin + portal.pathname];
+  if (!provider) return;
+  const rawRedirect = portal.searchParams.get(provider.redirectParameter);
+  const redirect = new URL(rawRedirect ?? '');
+  const port = Number(redirect.port);
   if (
     !Number.isInteger(port) || port < 1024 || port > 65535
-    || portal.searchParams.get('auth_callback_url') !== `http://${HOST}:${port}${CALLBACK}`
+    || rawRedirect !== `http://${HOST}:${port}${provider.callbackPath}`
+    || (provider.verifyPortParameter && portal.searchParams.get('port') !== String(port))
   ) {
-    throw new Error('Invalid CodeArts callback address');
+    throw new Error('Invalid loopback callback address');
   }
-  return port;
+  return { port, path: provider.callbackPath };
 }
 
-function listenForCallback(listeners, postLogin, login, port) {
+function listenForCallback(listeners, postLogin, login, { port, path }) {
   const authority = `${HOST}:${port}`;
   const origin = `http://${authority}`;
   let busy = false;
   const server = http.createServer(async (request, response) => {
-    if (request.method !== 'GET' || request.headers.host !== authority || !request.url.startsWith(`${CALLBACK}?`)) {
-      send(response, 404, 'Waiting for the Huawei authorization callback.');
+    if (request.method !== 'GET' || request.headers.host !== authority || !request.url.startsWith(`${path}?`)) {
+      send(response, 404, 'Waiting for the authorization callback.');
       return;
     }
     const target = new URL(request.url, origin);
     if (!target.searchParams.get('state') || !(target.searchParams.get('code') || target.searchParams.get('error'))) {
-      send(response, 404, 'Waiting for the Huawei authorization callback.');
+      send(response, 404, 'Waiting for the authorization callback.');
       return;
     }
     if (busy) {
@@ -98,6 +113,7 @@ export function createPanelProxy({ upstreamPort, adminKey }) {
 
   async function forwardLogin(upstream, response) {
     let login;
+    let target;
     try {
       const chunks = [];
       let bytes = 0;
@@ -109,15 +125,18 @@ export function createPanelProxy({ upstreamPort, adminKey }) {
       const body = Buffer.concat(chunks);
       if (upstream.statusCode === 200 && upstream.headers['content-type']?.includes('application/json')) {
         login = JSON.parse(body).data;
-        const port = codeArtsCallbackPort(login);
-        if (port !== undefined) await listenForCallback(listeners, postLogin, login, port);
+        target = callbackTarget(login);
+        if (target) await listenForCallback(listeners, postLogin, login, target);
       }
       response.writeHead(upstream.statusCode, upstream.headers);
       response.end(body);
-    } catch {
+    } catch (error) {
       if (login?.state) void postLogin('cancel', { state: login.state }).catch(() => {});
       if (!response.headersSent) {
-        send(response, 502, { success: false, message: 'Cannot open the local callback port. Restart the login.' });
+        const message = target && error?.code === 'EADDRINUSE'
+          ? `Local callback port ${target.port} is already in use. Close the app using it and restart the login.`
+          : 'Cannot open the local callback port. Restart the login.';
+        send(response, 502, { success: false, message });
       } else {
         response.destroy();
       }

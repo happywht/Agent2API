@@ -221,7 +221,7 @@ compose 사용자는 서비스에 `mem_limit: 1g` 한 줄을 추가하세요(`do
 
 `MALLOC_ARENA_MAX=2` 같은 glibc 할당자 튜닝은 **jemalloc 을 내장하지 않은 형태**(구버전 이미지, 직접 빌드한 서버, 데스크톱)에만 의미가 있습니다. 이 이미지에는 설정할 필요가 없습니다.
 
-**웹 패널 기능 차이**( 이 PC에 데스크톱 클라이언트가 없음에서 비롯됩니다): 웹 로그인(WorkBuddy / Qoder / Cline), SMS 인증 코드, 자격 증명 붙여넣기는 완전히 사용 가능합니다. 이 PC 콜백이 필요한 웹 로그인(AutoClaw / CatPaw / Accio / CodeArts / Trae)과 "이 PC 로그인 상태 가져오기"는 사용할 수 없으니 자격 증명 붙여넣기를 쓰세요. 데스크톱에서 "웹 관리 패널도 공개"를 켠 뒤 브라우저로 열어도 같은 차이가 적용됩니다 —— 동일한 화면, 동일한 판정입니다. Windows Docker Desktop에서는 아래 CodeArts 콜백 연결로 CodeArts 웹 로그인을 사용할 수 있습니다.
+**웹 패널 기능 차이**( 이 PC에 데스크톱 클라이언트가 없음에서 비롯됩니다): 웹 로그인(WorkBuddy / Qoder / Cline), SMS 인증 코드, 자격 증명 붙여넣기는 완전히 사용 가능합니다. 이 PC 콜백이 필요한 웹 로그인(AutoClaw / CatPaw / Accio / CodeArts / Trae)과 "이 PC 로그인 상태 가져오기"는 사용할 수 없으니 자격 증명 붙여넣기를 쓰세요. 데스크톱에서 "웹 관리 패널도 공개"를 켠 뒤 브라우저로 열어도 같은 차이가 적용됩니다 —— 동일한 화면, 동일한 판정입니다. Windows Docker Desktop에서는 아래 CodeArts와 ChatGPT 구독 콜백 연결로 해당 웹 로그인을 사용할 수 있습니다.
 
 ### 컨테이너 내 업데이트(선택)
 
@@ -231,7 +231,7 @@ compose 사용자는 서비스에 `mem_limit: 1g` 한 줄을 추가하세요(`do
 
 주의할 점: 컨테이너 내 업데이트 후에는 이미지 태그와 **실제 실행 중인 버전이 어긋납니다**(`docker inspect`에는 여전히 이전 태그가 표시됩니다). `docker compose pull && up -d`로 컨테이너를 재생성하면 이미지에 포함된 버전으로 되돌아갑니다. 버전을 고정하려면 이 진입점을 켜지 마세요.
 
-### Windows Docker Desktop의 CodeArts 콜백
+### Windows Docker Desktop의 CodeArts 및 ChatGPT 구독 콜백
 
 Node.js 22 이상을 설치합니다. 컨테이너 패널을 로컬의 `127.0.0.1:18082:3066`(별도 패널) 또는 `127.0.0.1:18082:3065`(패널과 게이트웨이 포트 공유)에 바인딩합니다. Agent2API에 이미 설정된 관리 API 접근 가능 키를 사용하거나 컨테이너 환경 변수 `AGENT2API_PROXY_API_KEY`를 설정합니다. 배포 디렉터리의 `.env`에 같은 값을 `AGENT2API_PROXY_API_KEY`로 설정합니다. 기존 `A2_MANAGEMENT_KEY`도 사용할 수 있습니다. 이 소스 체크아웃에서 실행합니다.
 
@@ -239,7 +239,7 @@ Node.js 22 이상을 설치합니다. 컨테이너 패널을 로컬의 `127.0.0.
 powershell -File .\scripts\windows-codearts-callback.ps1 -Install -DeploymentDirectory 'C:\path\to\deployment'
 ```
 
-같은 Windows 컴퓨터에서 `http://127.0.0.1:18080`을 엽니다. 스크립트는 현재 사용자 로그인 시 시작하고 자동 복구하는 예약 작업을 등록하며, 로그는 `%LOCALAPPDATA%\Agent2API\windows-codearts-web`에 저장합니다. CodeArts는 로그인마다 동적 콜백 포트를 사용하며 Docker에 해당 포트를 게시할 필요가 없습니다. 이 연결은 로컬 브라우저와 CodeArts를 지원합니다.
+같은 Windows 컴퓨터에서 `http://127.0.0.1:18080`을 엽니다. 스크립트는 현재 사용자 로그인 시 시작하고 자동 복구하는 예약 작업을 등록하며, 로그는 `%LOCALAPPDATA%\Agent2API\windows-codearts-web`에 저장합니다. CodeArts는 로그인마다 동적 콜백 포트를 사용합니다. ChatGPT 구독은 `/auth/callback`과 포트 `1455`를 우선 사용하며 컨테이너에서 포트가 사용 중이면 동적 포트를 사용합니다. 연결은 진행 중인 로그인의 콜백 포트만 수신하며 해당 포트를 Docker에 게시할 필요가 없습니다. Windows 호스트에서 콜백 포트를 이미 사용 중이면 기존 리스너를 유지하고 패널에 충돌 해결 안내가 표시됩니다. 이 연결은 로컬 브라우저, CodeArts 및 ChatGPT 구독을 지원합니다.
 
 ## 확인과 클라이언트 연결
 

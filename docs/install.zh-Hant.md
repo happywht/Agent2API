@@ -237,7 +237,7 @@ compose 使用者在服務裡加一行 `mem_limit: 1g`（`docker-compose.yml` �
 
 `MALLOC_ARENA_MAX=2` 這類 glibc 配置器調校，只對**沒有內建 jemalloc 的形態**有意義（舊版映像、自行編譯的伺服器端、桌面端）；本映像已不需要設定它。
 
-**網頁面板的功能差異**（源於「沒有本機桌面客戶端」）：網頁登入（WorkBuddy / Qoder / Cline）、手機驗證碼、貼上憑證完全可用；需要本機回呼的網頁登入（AutoClaw / CatPaw / Accio / CodeArts / Trae）與「匯入本機登入狀態」不可用，請改用貼上憑證。桌面端開著「同時開放網頁管理面板」時，用瀏覽器存取該面板也是這一套差異 —— 同一份介面、同一套判定。Windows Docker Desktop 可透過下方 CodeArts 回呼橋接使用 CodeArts 網頁登入。
+**網頁面板的功能差異**（源於「沒有本機桌面客戶端」）：網頁登入（WorkBuddy / Qoder / Cline）、手機驗證碼、貼上憑證完全可用；需要本機回呼的網頁登入（AutoClaw / CatPaw / Accio / CodeArts / Trae）與「匯入本機登入狀態」不可用，請改用貼上憑證。桌面端開著「同時開放網頁管理面板」時，用瀏覽器存取該面板也是這一套差異 —— 同一份介面、同一套判定。Windows Docker Desktop 可透過下方 CodeArts 和 ChatGPT 訂閱回呼橋接使用相應的網頁登入。
 
 ### 容器內更新（選用）
 
@@ -247,7 +247,7 @@ compose 使用者在服務裡加一行 `mem_limit: 1g`（`docker-compose.yml` �
 
 代價要清楚：更新後容器標籤與**實際執行的版本會漂移**（`docker inspect` 顯示的仍是舊 tag），執行 `docker compose pull && up -d` 重建容器會回到映像裡的版本。想固定版本就別開這個入口。
 
-### Windows Docker Desktop 的 CodeArts 回呼
+### Windows Docker Desktop 的 CodeArts 和 ChatGPT 訂閱回呼
 
 安裝 Node.js 22 或更新版本。將容器面板綁定至本機 `127.0.0.1:18082:3066`（獨立面板）或 `127.0.0.1:18082:3065`（面板與閘道共用連接埠）。使用已在 Agent2API 設定且可存取管理介面的 API Key，或為容器設定 `AGENT2API_PROXY_API_KEY`。在部署目錄的 `.env` 中將 `AGENT2API_PROXY_API_KEY` 設為相同的值，也可使用既有的 `A2_MANAGEMENT_KEY`。在本原始碼目錄執行：
 
@@ -255,7 +255,7 @@ compose 使用者在服務裡加一行 `mem_limit: 1g`（`docker-compose.yml` �
 powershell -File .\scripts\windows-codearts-callback.ps1 -Install -DeploymentDirectory 'C:\path\to\deployment'
 ```
 
-在同一台 Windows 電腦開啟 `http://127.0.0.1:18080`。指令碼註冊目前使用者登入時啟動且自動復原的排程工作，日誌位於 `%LOCALAPPDATA%\Agent2API\windows-codearts-web`。CodeArts 每次使用動態回呼連接埠，無須透過 Docker 發布。此橋接適用於本機瀏覽器和 CodeArts。
+在同一台 Windows 電腦開啟 `http://127.0.0.1:18080`。指令碼註冊目前使用者登入時啟動且自動復原的排程工作，日誌位於 `%LOCALAPPDATA%\Agent2API\windows-codearts-web`。CodeArts 每次使用動態回呼連接埠。ChatGPT 訂閱使用 `/auth/callback`，優先使用連接埠 `1455`，容器內該連接埠被占用時改用動態連接埠。橋接僅監聽目前登入的回呼連接埠，無須透過 Docker 發布。若 Windows 主機的回呼連接埠已被占用，既有監聽程式會保留，面板會提示處理連接埠衝突。此橋接適用於本機瀏覽器、CodeArts 和 ChatGPT 訂閱。
 
 ## 驗證與客戶端接入
 

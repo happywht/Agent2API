@@ -221,7 +221,7 @@ Os dois caches de imagem mantidos em memória podem ser reduzidos por variável 
 
 Ajustes de alocador glibc como `MALLOC_ARENA_MAX=2` só fazem sentido em builds **sem** jemalloc (imagens antigas, servidor compilado por você, desktop); esta imagem não precisa disso.
 
-**Diferenças de recursos no painel web** (decorrem de "não haver cliente de desktop local"): login pela web (WorkBuddy / Qoder / Cline), código por SMS e credenciais coladas funcionam plenamente; logins pela web que exigem callback nesta máquina (AutoClaw / CatPaw / Accio / CodeArts / Trae) e a "importação do estado de login local" não estão disponíveis — use credenciais coladas. Com o desktop e a opção de expor o painel ativadas, abrir no navegador mostra as mesmas diferenças: uma interface, um conjunto de regras. No Windows Docker Desktop, a ponte de callback abaixo permite o login web do CodeArts.
+**Diferenças de recursos no painel web** (decorrem de "não haver cliente de desktop local"): login pela web (WorkBuddy / Qoder / Cline), código por SMS e credenciais coladas funcionam plenamente; logins pela web que exigem callback nesta máquina (AutoClaw / CatPaw / Accio / CodeArts / Trae) e a "importação do estado de login local" não estão disponíveis — use credenciais coladas. Com o desktop e a opção de expor o painel ativadas, abrir no navegador mostra as mesmas diferenças: uma interface, um conjunto de regras. No Windows Docker Desktop, a ponte de callback abaixo permite o login web do CodeArts e da assinatura ChatGPT.
 
 ### Atualização dentro do contêiner (opcional)
 
@@ -231,7 +231,7 @@ O mesmo `agent2api-server-linux-<arch>.tar.gz` também é o pacote de instalaç�
 
 Atenção ao custo: depois de uma atualização interna, a tag da imagem e a versão realmente em execução **divergem** (`docker inspect` continua mostrando a tag antiga), e `docker compose pull && up -d` recria o contêiner na versão embutida na imagem. Se você quer versões fixas, deixe esse caminho desativado.
 
-### Callback do CodeArts no Windows Docker Desktop
+### Callbacks do CodeArts e da assinatura ChatGPT no Windows Docker Desktop
 
 Instale Node.js 22 ou posterior. Vincule o painel do contêiner somente ao host local com `127.0.0.1:18082:3066` para painel separado ou `127.0.0.1:18082:3065` para painel e gateway na mesma porta. Use uma chave com acesso administrativo já configurada no Agent2API ou defina `AGENT2API_PROXY_API_KEY` no ambiente do contêiner. No `.env` do diretório de implantação, defina `AGENT2API_PROXY_API_KEY` com o mesmo valor. Uma implantação existente também pode usar `A2_MANAGEMENT_KEY`. Neste checkout, execute:
 
@@ -239,7 +239,7 @@ Instale Node.js 22 ou posterior. Vincule o painel do contêiner somente ao host 
 powershell -File .\scripts\windows-codearts-callback.ps1 -Install -DeploymentDirectory 'C:\path\to\deployment'
 ```
 
-Abra `http://127.0.0.1:18080` na mesma máquina Windows. O script registra uma tarefa agendada para iniciar no logon do usuário atual e recuperar o serviço automaticamente. Os logs ficam em `%LOCALAPPDATA%\Agent2API\windows-codearts-web`. O CodeArts usa uma porta dinâmica para cada callback, sem necessidade de publicá-la no Docker. A ponte atende ao navegador local e ao CodeArts.
+Abra `http://127.0.0.1:18080` na mesma máquina Windows. O script registra uma tarefa agendada para iniciar no logon do usuário atual e recuperar o serviço automaticamente. Os logs ficam em `%LOCALAPPDATA%\Agent2API\windows-codearts-web`. O CodeArts usa uma porta dinâmica para cada login. A assinatura ChatGPT usa `/auth/callback` e prefere a porta `1455`, com uma porta dinâmica como alternativa quando ela está ocupada no contêiner. A ponte escuta somente as portas de callback de logins em andamento, sem precisar publicá-las no Docker. Se uma porta de callback estiver ocupada no host Windows, o processo existente permanece e o painel informa o conflito para resolução. A ponte atende ao navegador local, ao CodeArts e à assinatura ChatGPT.
 
 ## Verificação e conexão do cliente
 
